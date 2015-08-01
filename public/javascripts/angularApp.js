@@ -1,1 +1,1 @@
-angular.module('app', ['ui.router', 'nvd3']);
+angular.module('app', ['ui.router']);
