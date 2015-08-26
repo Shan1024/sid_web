@@ -2,32 +2,40 @@ var app = angular.module('app');
 
 app.config(['$stateProvider', '$urlRouterProvider', function($stateProvider, $urlRouterProvider) {
   $stateProvider
-    .state('openbugs', {
-      url: '/openbugs',
-      templateUrl: 'partials/openbugs.html',
-      controller: 'OpenBugsCtrl'
-    }).state('unittests', {
-      url: '/unittests',
-      templateUrl: 'partials/unittests.html',
-      controller: 'UnitTestsCtrl'
-    }).state('coverage', {
-      url: '/coverage',
-      templateUrl: 'partials/coverage.html',
-      controller: 'CoverageCtrl'
+    .state('editprofile', {
+      url: '/editprofile',
+      templateUrl: 'partials/editprofile.html',
+      controller: 'EditProfileCtrl'
+    }).state('newsfeed', {
+      url: '/newsfeed',
+      templateUrl: 'partials/newsfeed.html',
+      controller: 'NewsFeedCtrl'
+    }).state('myratings', {
+      url: '/myratings',
+      templateUrl: 'partials/myratings.html',
+      controller: 'MyRatingsCtrl'
+    }).state('rateafriend', {
+      url: '/rateafriend',
+      templateUrl: 'partials/rateafriend.html',
+      controller: 'RateAFriendCtrl'
     });
 
-  $urlRouterProvider.otherwise('openbugs');
+  $urlRouterProvider.otherwise('newsfeed');
 }]);
 
-app.controller('OpenBugsCtrl', ['$scope', function($scope){
-  $scope.OpenBugsCtrlTest = 'OpenBugsCtrlTest';
+app.controller('EditProfileCtrl', ['$scope', function($scope){
+  $scope.EditProfileCtrlTest = 'EditProfileCtrlTest';
 }]);
 
 
-app.controller('UnitTestsCtrl', ['$scope', function($scope) {
-  $scope.UnitTestsCtrlTest = 'UnitTestsCtrlTest';
+app.controller('NewsFeedCtrl', ['$scope', function($scope) {
+  $scope.NewsFeedCtrlTest = 'NewsFeedCtrlTest';
 }]);
 
-app.controller('CoverageCtrl', ['$scope', function($scope){
-  $scope.CoverageCtrlTest = 'CoverageCtrlTest';
+app.controller('MyRatingsCtrl', ['$scope', function($scope){
+  $scope.MyRatingsCtrlTest = 'MyRatingsCtrlTest';
+}]);
+
+app.controller('RateAFriendCtrl', ['$scope', function($scope){
+  $scope.RateAFriendCtrlTest = 'RateAFriendCtrlTest';
 }]);
