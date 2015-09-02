@@ -1,55 +1,256 @@
-var passport = require('passport');
-var LocalStrategy = require('passport-local').Strategy;
-var FacebookStrategy = require('passport-facebook').Strategy;
+// config/passport.js
+
+// load all the things we need
+var LocalStrategy   = require('passport-local').Strategy;
+var FacebookStrategy   = require('passport-facebook').Strategy;
 var LinkedInStrategy = require('passport-linkedin').Strategy;
-var mongoose = require('mongoose');
-var User = mongoose.model('User');
 
-passport.use(new LocalStrategy(
-  function(username, password, done) {
-    User.findOne({ username: username }, function (err, user) {
-      if (err) { return done(err); }
-      if (!user) {
-        return done(null, false, { message: 'Incorrect username.' });
-      }
-      if (!user.validPassword(password)) {
-        return done(null, false, { message: 'Incorrect password.' });
-      }
-      return done(null, user);
-    });
-  }
-));
+var configAuth = require('./auth');
 
-passport.use(new FacebookStrategy({
-    clientID: '819814544764038',
-    clientSecret: 'd8817a92f941ca5f80068dedd7c4a9f6',
-    callbackURL: "http://localhost:3000/auth/facebook/callback",
-    enableProof: false
-  },
-  function(accessToken, refreshToken, profile, done) {
-    User.findOrCreate({ facebookId: profile.id }, function (err, user) {
-      return done(err, user);
-    });
-  }
-));
+// load up the user model
+var User            = require('../models/user');
 
-passport.use(new LinkedInStrategy({
-    consumerKey: '75fudvr5pz7bls',
-    consumerSecret: 'Sn2KXqYfzCKGsMAk',
-    callbackURL: "http://localhost:8080/auth/linkedin/callback"
-  },
-  function(token, tokenSecret, profile, done) {
-    /* console.log('in strategy');
-    User.findOrCreate({ linkedinId: profile.id }, function (err, user) {
-      return done(err, user);
-    }); */
-    process.nextTick(function () {
-      // To keep the example simple, the user's LinkedIn profile is returned to
-      // represent the logged-in user.  In a typical application, you would want
-      // to associate the LinkedIn account with a user record in your database,
-      // and return that user instead.
-      console.log(profile);
-      return done(null, profile);
+// expose this function to our app using module.exports
+module.exports = function(passport) {
+
+    // =========================================================================
+    // passport session setup ==================================================
+    // =========================================================================
+    // required for persistent login sessions
+    // passport needs ability to serialize and unserialize users out of session
+
+    // used to serialize the user for the session
+    passport.serializeUser(function(user, done) {
+        done(null, user.id);
     });
-  }
-));
+
+    // used to deserialize the user
+    passport.deserializeUser(function(id, done) {
+        User.findById(id, function(err, user) {
+            done(err, user);
+        });
+    });
+
+    // =========================================================================
+    // LOCAL SIGNUP ============================================================
+    // =========================================================================
+    // we are using named strategies since we have one for login and one for signup
+    // by default, if there was no name, it would just be called 'local'
+
+    passport.use('local-signup', new LocalStrategy({
+        // by default, local strategy uses username and password, we will override with email
+        usernameField : 'email',
+        passwordField : 'password',
+        passReqToCallback : true // allows us to pass back the entire request to the callback
+    },
+    function(req, email, password, done) {
+
+        // asynchronous
+        // User.findOne wont fire unless data is sent back
+        process.nextTick(function() {
+
+        // find a user whose email is the same as the forms email
+        // we are checking to see if the user trying to login already exists
+        User.findOne({ 'local.email' :  email }, function(err, user) {
+            // if there are any errors, return the error
+            if (err)
+                return done(err);
+
+            // check to see if theres already a user with that email
+            if (user) {
+                return done(null, false, req.flash('signupMessage', 'That email is already taken.'));
+            } else {
+
+                // if there is no user with that email
+                // create the user
+                var newUser            = new User();
+
+                // set the user's local credentials
+                newUser.local.email    = email;
+                newUser.local.password = newUser.generateHash(password);
+
+                // save the user
+                newUser.save(function(err) {
+                    if (err)
+                        throw err;
+                    return done(null, newUser);
+                });
+            }
+
+        });
+
+        });
+
+    }));
+
+    passport.use('local-login', new LocalStrategy({
+        // by default, local strategy uses username and password, we will override with email
+        usernameField : 'email',
+        passwordField : 'password',
+        passReqToCallback : true // allows us to pass back the entire request to the callback
+    },
+    function(req, email, password, done) { // callback with email and password from our form
+
+        // find a user whose email is the same as the forms email
+        // we are checking to see if the user trying to login already exists
+        User.findOne({ 'local.email' :  email }, function(err, user) {
+            // if there are any errors, return the error before anything else
+            if (err)
+                return done(err);
+
+            // if no user is found, return the message
+            if (!user)
+                return done(null, false, req.flash('loginMessage', 'No user found.')); // req.flash is the way to set flashdata using connect-flash
+
+            // if the user is found but the password is wrong
+            if (!user.validPassword(password))
+                return done(null, false, req.flash('loginMessage', 'Oops! Wrong password.')); // create the loginMessage and save it to session as flashdata
+
+            // all is well, return successful user
+            return done(null, user);
+        });
+
+    }));
+
+    passport.use(new FacebookStrategy({
+
+        // pull in our app id and secret from our auth.js file
+        clientID        : configAuth.facebookAuth.clientID,
+        clientSecret    : configAuth.facebookAuth.clientSecret,
+        callbackURL     : configAuth.facebookAuth.callbackURL
+
+    },
+
+    // facebook will send back the token and profile
+    function(token, refreshToken, profile, done) {
+
+        // asynchronous
+        process.nextTick(function() {
+
+            // find the user in the database based on their facebook id
+            User.findOne({ 'facebook.id' : profile.id }, function(err, user) {
+
+                // if there is an error, stop everything and return that
+                // ie an error connecting to the database
+                if (err)
+                    return done(err);
+
+                // if the user is found, then log them in
+                if (user) {
+                    return done(null, user); // user found, return that user
+                } else {
+                    // if there is no user found with that facebook id, create them
+                    var newUser            = new User();
+
+                    // set all of the facebook information in our user model
+                    newUser.facebook.id    = profile.id; // set the users facebook id
+                    newUser.facebook.token = token; // we will save the token that facebook provides to the user
+                    newUser.facebook.name  = profile.name.givenName + ' ' + profile.name.familyName; // look at the passport user profile to see how names are returned
+                    newUser.facebook.email = profile.emails[0].value; // facebook can return multiple emails so we'll take the first
+
+                    // save our user to the database
+                    newUser.save(function(err) {
+                        if (err)
+                            throw err;
+
+                        // if successful, return the new user
+                        return done(null, newUser);
+                    });
+                }
+
+            });
+        });
+
+    }));
+
+    passport.use(new LinkedInStrategy({
+      consumerKey   : configAuth.linkedinAuth.consumerKey,
+      consumerSecret: configAuth.linkedinAuth.consumerSecret,
+      callbackURL   : configAuth.linkedinAuth.callbackURL,
+      passReqToCallback : true, // allows us to pass in the req from our route (lets us check if a user is logged in or not)
+      profileFields: ['id', 'first-name', 'last-name', 'email-address']/*,
+      passReqToCallback : true, // allows us to pass in the req from our route (lets us check if a user is logged in or not)
+      state: true,
+      profileFields: ['id', 'first-name', 'last-name', 'email-address'],
+      scope:['r_emailaddress', 'r_basicprofile']*/
+        },
+
+        function(req, accessToken, refreshToken, profile, done) {
+
+          console.log(' req    : '+ req);
+          console.log(' token  : '+ accessToken);
+          console.log(' rtoken : '+ refreshToken);
+          console.log(' profile: '+ profile);
+          console.log(' done   : '+ done);
+
+            linkedin.setLinkedInToken(token);
+
+            // asynchronous
+            process.nextTick(function() {
+
+                // check if the user is already logged in
+                if (!req.user) {
+
+                    User.findOne({ 'linkedin.id' : profile.id }, function(err, user) {
+                        if (err)
+                            return done(err);
+
+                        if (user) {
+
+                            // if there is a user id already but no token (user was linked at one point and then removed)
+                            if (!user.linkedin.token) {
+                                user.linkedin.token = token;
+                                user.linkedin.name  = profile.name.givenName + ' ' + profile.name.familyName; // look at the passport user profile to see how names are returned
+                                user.linkedin.email = (profile.emails[0].value || '').toLowerCase();
+
+                                console.log("USER: "+user);
+
+                                user.save(function(err) {
+                                    if (err)
+                                        return done(err);
+
+                                    return done(null, user);
+                                });
+                            }
+
+                            return done(null, user); // user found, return that user
+                        } else {
+                            // if there is no user, create them
+                            var newUser            = new User();
+
+                            newUser.linkedin.id    = profile.id;
+                            newUser.linkedin.token = token;
+                            newUser.linkedin.name  = profile.name.givenName + ' ' + profile.name.familyName; // look at the passport user profile to see how names are returned
+                            newUser.linkedin.email = (profile.emails[0].value || '').toLowerCase();
+
+                            newUser.save(function(err) {
+                                if (err)
+                                    return done(err);
+
+                                return done(null, newUser);
+                            });
+                        }
+                    });
+
+                } else {
+                    // user already exists and is logged in, we have to link accounts
+                    var user            = req.user; // pull the user out of the session
+
+                    user.linkedin.id    = profile.id;
+                    user.linkedin.token = token;
+                    user.linkedin.name  = profile.name.givenName + ' ' + profile.name.familyName; // look at the passport user profile to see how names are returned
+                    user.linkedin.email = (profile.emails[0].value || '').toLowerCase();
+
+                    user.save(function(err) {
+                        if (err)
+                            return done(err);
+
+                        return done(null, user);
+                    });
+
+                }
+            });
+
+        }));
+
+};

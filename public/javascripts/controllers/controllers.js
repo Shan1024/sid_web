@@ -18,9 +18,13 @@ app.config(['$stateProvider', '$urlRouterProvider', function($stateProvider, $ur
       url: '/rateafriend',
       templateUrl: 'partials/rateafriend.html',
       controller: 'RateAFriendCtrl'
+    }).state('login', {
+      url: '/login',
+      templateUrl: 'partials/login.html',
+      controller: 'LoginCtrl'
     });
 
-  $urlRouterProvider.otherwise('newsfeed');
+  $urlRouterProvider.otherwise('login');
 }]);
 
 app.controller('EditProfileCtrl', ['$scope', function($scope){
@@ -38,4 +42,8 @@ app.controller('MyRatingsCtrl', ['$scope', function($scope){
 
 app.controller('RateAFriendCtrl', ['$scope', function($scope){
   $scope.RateAFriendCtrlTest = 'RateAFriendCtrlTest';
+}]);
+
+app.controller('LoginCtrl', ['$scope', function($scope){
+  $scope.LoginCtrlTest = 'LoginCtrlTest';
 }]);

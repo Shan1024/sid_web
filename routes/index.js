@@ -2,12 +2,8 @@ var express = require('express');
 var router = express.Router();
 var rest = require('restler');
 var async = require('async');
-var passport = require('passport');
 var mongoose = require('mongoose');
-var User = mongoose.model('User');
-var jwt = require('express-jwt');
-
-var auth = jwt({secret: 'SECRET', userProperty: 'payload'});
+var passport = require('passport');
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
@@ -30,58 +26,84 @@ router.get('/partials/rateafriend.html', function(req, res, next) {
   res.render('partials/rateafriend');
 });
 
-router.post('/register', function(req, res, next){
-  if(!req.body.username || !req.body.password){
-    return res.status(400).json({message: 'Please fill out all fields'});
-  }
-
-  var user = new User();
-
-  user.username = req.body.username;
-
-  user.setPassword(req.body.password)
-
-  user.save(function (err){
-    if(err){ return next(err); }
-
-    return res.json({token: user.generateJWT()})
-  });
+router.get('/partials/login.html', function(req, res, next) {
+  res.render('partials/login');
 });
 
-router.post('/login', function(req, res, next){
-  if(!req.body.username || !req.body.password){
-    return res.status(400).json({message: 'Please fill out all fields'});
-  }
-
-  passport.authenticate('local', function(err, user, info){
-    if(err){ return next(err); }
-
-    if(user){
-      return res.json({token: user.generateJWT()});
-    } else {
-      return res.status(401).json(info);
-    }
-  })(req, res, next);
+router.get('/auth/facebook', function(req, res, next){
+  res.redirect('http://localhost:8080/auth/facebook');
+});
+/*
+router.get('/profile', function(req, res, next){
+  res.json({text: 'success'});
 });
 
-router.get('/auth/facebook', passport.authenticate('facebook'));
+router.get('/profilefb', function(req, res, next){
+  res.json({text: 'success'});
+});
 
+router.get('/errorfb', function(req, res, next){
+  res.json({text: 'failure fb'});
+});
+
+router.get('/errorli', function(req, res, next){
+  res.json({text: 'failure li'});
+});
+
+router.get('/signup', function(req, res, next){
+  res.json({text: 'failure signup'});
+});
+
+router.get('/login', function(req, res, next){
+  res.json({text: 'failure login'});
+});
+
+router.post('/signup', passport.authenticate('local-signup', {
+    successRedirect : '/profile', // redirect to the secure profile section
+    failureRedirect : '/signup', // redirect back to the signup page if there is an error
+    failureFlash : true // allow flash messages
+}));
+
+router.post('/login', passport.authenticate('local-login', {
+    successRedirect : '/profile', // redirect to the secure profile section
+    failureRedirect : '/login', // redirect back to the signup page if there is an error
+    failureFlash : true // allow flash messages
+}));
+
+router.get('/auth/facebook', passport.authenticate('facebook', { scope : 'email' }));
+
+// handle the callback after facebook has authenticated the user
 router.get('/auth/facebook/callback',
-  passport.authenticate('facebook', { failureRedirect: '/login' }),
-  function(req, res) {
-    // Successful authentication, redirect home.
-    res.json({status: 'success'});
-  });
+    passport.authenticate('facebook', {
+    successRedirect : '/profile',
+    failureRedirect : '/login'
+}));
 
-router.get('/auth/linkedin', passport.authenticate('linkedin'), function(req, res){
-
-});
+router.get('/auth/linkedin', passport.authenticate('linkedin'));
 
 router.get('/auth/linkedin/callback',
-  passport.authenticate('linkedin', { failureRedirect: '/login' }),
-  function(req, res) {
+    passport.authenticate('linkedin', { failureRedirect: '/errorli' }),
+    function(req, res) {
       // Successful authentication, redirect home.
-      res.jason({status: 'success'});
-  });
+      res.redirect('/profile');
+});
 
+// route for logging out
+router.get('/logout', function(req, res) {
+    req.logout();
+    res.redirect('/');
+});
+
+
+// route middleware to make sure a user is logged in
+function isLoggedIn(req, res, next) {
+
+    // if user is authenticated in the session, carry on
+    if (req.isAuthenticated())
+        return next();
+
+    // if they aren't redirect them to the home page
+    res.redirect('/');
+}
+*/
 module.exports = router;

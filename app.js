@@ -6,13 +6,16 @@ var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var mongoose = require('mongoose');
 var passport = require('passport');
-require('./models/Users');
-require('./config/passport');
+var flash    = require('connect-flash');
+var session      = require('express-session');
+var configDB = require('./config/database.js');
 
+mongoose.connect(configDB.url);
+
+require('./config/passport')(passport); // pass passport for configuration
 
 var routes = require('./routes/index');
 
-mongoose.connect('mongodb://localhost/sid');
 
 var app = express();
 
@@ -28,7 +31,13 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// required for passport
+app.use(session({ secret: 'ilovescotchscotchyscotchscotch' })); // session secret
 app.use(passport.initialize());
+app.use(passport.session()); // persistent login sessions
+app.use(flash()); // use connect-flash for flash messages stored in session
+
 
 app.use('/', routes);
 
