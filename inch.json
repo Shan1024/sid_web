@@ -1,0 +1,7 @@
+{
+  "files": {
+    "included": [
+      "*.js", "bin/**/*.js", "config/**/*.js", "models/**/*.js", "public/**/*.js", "routes/**/*.js"
+    ]
+  }
+}
