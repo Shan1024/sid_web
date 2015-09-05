@@ -35,11 +35,11 @@ engines:
 
 ratings:
   paths:
-  - bin/**/*
-  - config/**/*
-  - models/**/*
-  - public/**/*
-  - routes/**/*
+  - bin/**
+  - config/**
+  - models/**
+  - public/**
+  - routes/**
   - app.js
 #   - "**.rb"
 #   - "**.go"
